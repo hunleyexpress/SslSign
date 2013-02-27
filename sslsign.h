@@ -25,6 +25,7 @@ typedef enum {
     eExtractFailure,
     eOutputBufferFailure,
     eOutputWriteFailure,
+    eMemoryAllocationFailure,
 
     eErrorLast	// never used
 } eSslSignError;

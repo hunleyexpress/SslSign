@@ -25,6 +25,7 @@ static char* error_codes[] = {
     "Extract Failure",
     "Init Output Buffer Failure",
     "Output Write Failure",
+    "Memory allocation failure",
 
     "Unknown"
 };
@@ -171,8 +172,11 @@ Results signData( void* data, size_t length )
                         result.size = BIO_get_mem_data(out, &resultData);
 
                         result.data = malloc(result.size);
-                        memcpy( result.data, resultData, result.size );
-                        ret = eNone;
+                        ret = eMemoryAllocationFailure;
+			if( result.data ) {
+                            memcpy( result.data, resultData, result.size );
+                            ret = eNone;
+                        }
                     }
                     BIO_free(out);
                 }
@@ -223,9 +227,11 @@ Results verifySignedData( void* data, size_t length )
                         result.size = BIO_get_mem_data(out, &resultData);
 
                         result.data = malloc(result.size);
-                        memcpy( result.data, resultData, result.size );
-
-                        ret = eNone;
+                        ret = eMemoryAllocationFailure;
+                        if( result.data ) {
+                            memcpy( result.data, resultData, result.size );
+                           ret = eNone;
+                        }
                     }
                     
                     PKCS7_free(p7);
@@ -269,8 +275,6 @@ Results extractSignedContents( void* data, size_t length )
             ret = eSignedDataRetrievalFailure;
             if( p7 )
             {
-                ++ret;
-
                 /* extract the signed contents */
                 ret = eExtractFailure;
                 if( PKCS7_verify(p7, NULL, store, NULL, out, PKCS7_NOVERIFY|PKCS7_NOSIGS) )
@@ -279,11 +283,12 @@ Results extractSignedContents( void* data, size_t length )
                     result.size = BIO_get_mem_data(out, &resultData);
 
                     result.data = malloc(result.size);
-                    memcpy( result.data, resultData, result.size );
-
-                    ret = eNone;
+                    ret = eMemoryAllocationFailure;
+                    if( result.data ) {
+                        memcpy( result.data, resultData, result.size );
+                        ret = eNone;
+                     }
                 }
-
                 PKCS7_free(p7);
             }
 
