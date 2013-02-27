@@ -327,6 +327,16 @@ void getErrorResults( Results * result )
     }
 }
 
+const char* getOpenSslErrorString()
+{
+    unsigned long errcode = ERR_peek_last_error();
+    if( errcode )
+    {
+        return ERR_reason_error_string(errcode);
+    }
+    return "unknown";
+}
+
 void freeResults( Results * result )
 {
     if( result && result->data )

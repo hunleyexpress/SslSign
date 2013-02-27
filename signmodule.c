@@ -6,6 +6,8 @@
 #include <Python.h>
 #include "sslsign.h"
 
+static PyObject* SslSignError;
+
 static PyObject * set_signing_cert(PyObject *self, PyObject *args)
 {
     Py_buffer cert;
@@ -17,7 +19,8 @@ static PyObject * set_signing_cert(PyObject *self, PyObject *args)
 
     if( ret == INVALID )
     {
-        // TODO raise an error
+        // raise an error
+        PyErr_SetString(SslSignError, getOpenSslErrorString());
         return NULL;
     }
 
@@ -40,7 +43,8 @@ static PyObject * set_ca_cert(PyObject *self, PyObject *args)
 
     if( ret == INVALID )
     {
-        // TODO raise an error
+        // raise an error
+        PyErr_SetString(SslSignError, getOpenSslErrorString());
         return NULL;
     }
 
@@ -64,8 +68,9 @@ static PyObject * sign(PyObject *self, PyObject *args)
 
     if( ret.error )
     {
+        // raise an error
 	getErrorResults( &ret );
-        // TODO raise an error
+        PyErr_SetString(SslSignError, ret.reason);
         return NULL;
     }
 
@@ -87,8 +92,9 @@ static PyObject * verify(PyObject *self, PyObject *args)
 
     if( ret.error )
     {
+        // raise an error
         getErrorResults( &ret );
-        // TODO raise an error
+        PyErr_SetString(SslSignError, ret.reason);
         return NULL;
     }
 
@@ -110,8 +116,9 @@ static PyObject * extract(PyObject *self, PyObject *args)
 
     if( ret.error )
     {
+        // raise an error
         getErrorResults( &ret );
-        // TODO raise an error
+        PyErr_SetString(SslSignError, ret.reason);
         return NULL;
     }
 
@@ -147,5 +154,14 @@ static struct PyModuleDef signmodule = {
 
 PyMODINIT_FUNC PyInit_sslsign(void)
 {
-    return PyModule_Create(&signmodule);
+    PyObject *m;
+
+    m = PyModule_Create(&signmodule);
+    if (m == NULL)
+        return NULL;
+
+    SslSignError = PyErr_NewException("sslsign.error", PyExc_RuntimeError, NULL);
+    Py_INCREF(SslSignError);
+    PyModule_AddObject(m, "error", SslSignError);
+    return m;
 }

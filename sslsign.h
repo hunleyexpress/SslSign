@@ -50,6 +50,7 @@ extern Results extractSignedContents( void* data, size_t length );
 
 extern void initializeResults( Results* result );
 extern void getErrorResults( Results * result );
+extern const char* getOpenSslErrorString();
 extern void freeResults( Results* result );
 
 #endif
