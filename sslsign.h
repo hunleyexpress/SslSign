@@ -14,6 +14,21 @@ typedef enum {
     INVALID = 0
 } eValid;
 
+typedef enum {
+    eNone = 0,
+    eMissingSigningCert,
+    eMissingCaCert,
+    eInputDataFailure,
+    eSignFailure,
+    eSignedDataRetrievalFailure,
+    eVerifyFailure,
+    eExtractFailure,
+    eOutputBufferFailure,
+    eOutputWriteFailure,
+
+    eErrorLast	// never used
+} eSslSignError;
+
 typedef struct {
     void* data;
     size_t size;

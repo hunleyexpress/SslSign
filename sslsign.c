@@ -14,6 +14,21 @@ static X509 *signing_cert = NULL;
 static EVP_PKEY *signing_key = NULL;
 static X509_STORE *store = NULL;
 
+static char* error_codes[] = {
+    "None",
+    "Missing Signing Cert",
+    "Missing CA Cert",
+    "Input Data Failure",
+    "OpenSSL Signing Failure",
+    "OpenSSL Signed Data Retrieval Failure",
+    "Verify Failure",
+    "Extract Failure",
+    "Init Output Buffer Failure",
+    "Output Write Failure",
+
+    "Unknown"
+};
+
 void initialize()
 {
     if( !initialized )
@@ -122,34 +137,33 @@ Results signData( void* data, size_t length )
     BIO *in = NULL, *out = NULL;
     PKCS7 *p7 = NULL;
     int flags = PKCS7_BINARY;
-    int ret = 1;
+    eSslSignError ret;
     Results result;
 
     initializeResults( &result );
+
+    ret = eMissingSigningCert;
     if( hasSigningCert() )
     {
-        ++ret;
-        in = BIO_new_mem_buf(data, length);
+        ret = eInputDataFailure;
+	in = BIO_new_mem_buf(data, length);
         if( in )
         {
-            ++ret;
-
             BIO_set_mem_eof_return(in, 0);
             
             /* Sign content */
             p7 = PKCS7_sign(signing_cert, signing_key, NULL, in, flags);
-            
+            ret = eSignFailure; 
             if( p7 )
             {
-                ++ret;
-   
+                ret = eOutputBufferFailure;   
                 out = BIO_new(BIO_s_mem());
                 if( out )
                 {
-                    ++ret;
                     BIO_set_close(out, BIO_CLOSE);
                     
                     /* Write out signed data */
+                    ret = eOutputWriteFailure;
                     if( i2d_PKCS7_bio(out, p7) )
                     {
                         // TODO: send the data back out
@@ -158,7 +172,7 @@ Results signData( void* data, size_t length )
 
                         result.data = malloc(result.size);
                         memcpy( result.data, resultData, result.size );
-                        ret = 0;
+                        ret = eNone;
                     }
                     BIO_free(out);
                 }
@@ -168,8 +182,7 @@ Results signData( void* data, size_t length )
         }
     }
 
-    result.error = ret;
-    
+    result.error = (int)ret;
     return result;
 }
 
@@ -177,34 +190,33 @@ Results verifySignedData( void* data, size_t length )
 {
     BIO *in = NULL, *out = NULL;
     PKCS7 *p7 = NULL;
-    int ret = 1;
+    eSslSignError ret;
     Results result;
 
     initializeResults(&result);
     
+    ret = eMissingCaCert;
     if( hasCaCert() )
     {
-        ++ret;
+        ret = eInputDataFailure;
         in = BIO_new_mem_buf(data, length);
         if( in )
         { 
-            ++ret;
             BIO_set_mem_eof_return(in, 0);
 
             out = BIO_new(BIO_s_mem());
-            if( out )
+            ret = eOutputBufferFailure;
+	    if( out )
             {
-                ++ret;
                 BIO_set_close(out, BIO_CLOSE);
 
                 /* get signed content */
                 p7 = d2i_PKCS7_bio(in, NULL);
-                
+                ret = eSignedDataRetrievalFailure; 
                 if( p7 )
                 {
-                    ++ret;
-
                     /* verify cert chain, signatures and extract the signed contents */
+                    ret = eVerifyFailure;
                     if( PKCS7_verify(p7, NULL, store, NULL, out, 0) )
                     {
                         char* resultData;
@@ -213,7 +225,7 @@ Results verifySignedData( void* data, size_t length )
                         result.data = malloc(result.size);
                         memcpy( result.data, resultData, result.size );
 
-                        ret = 0;
+                        ret = eNone;
                     }
                     
                     PKCS7_free(p7);
@@ -226,7 +238,7 @@ Results verifySignedData( void* data, size_t length )
         }
     }
 
-    result.error = ret;
+    result.error = (int)ret;
         
     return result;
 }
@@ -235,31 +247,32 @@ Results extractSignedContents( void* data, size_t length )
 {
     BIO *in = NULL, *out = NULL;
     PKCS7 *p7 = NULL;
-    int ret = 1;
+    eSslSignError ret;
     Results result;
 
     initializeResults(&result);
 
+    ret = eInputDataFailure;
     in = BIO_new_mem_buf(data, length);
     if( in )
     {
-        ++ret;
         BIO_set_mem_eof_return(in, 0);
 
         out = BIO_new(BIO_s_mem());
+        ret = eOutputBufferFailure;
         if( out )
         {
-            ++ret;
             BIO_set_close(out, BIO_CLOSE);
 
             /* get signed content */
             p7 = d2i_PKCS7_bio(in, NULL);
-
+            ret = eSignedDataRetrievalFailure;
             if( p7 )
             {
                 ++ret;
 
                 /* extract the signed contents */
+                ret = eExtractFailure;
                 if( PKCS7_verify(p7, NULL, store, NULL, out, PKCS7_NOVERIFY|PKCS7_NOSIGS) )
                 {
                     char* resultData;
@@ -268,7 +281,7 @@ Results extractSignedContents( void* data, size_t length )
                     result.data = malloc(result.size);
                     memcpy( result.data, resultData, result.size );
 
-                    ret = 0;
+                    ret = eNone;
                 }
 
                 PKCS7_free(p7);
@@ -280,7 +293,7 @@ Results extractSignedContents( void* data, size_t length )
         BIO_free(in);
     }
 
-    result.error = ret;
+    result.error = (int)ret;
 
     return result;
 }
@@ -303,6 +316,14 @@ void getErrorResults( Results * result )
     {
          result->error = errcode;
          ERR_error_string_n(errcode, result->reason, sizeof(result->reason));
+    }
+    else if( result->error < eErrorLast )
+    {
+        strcpy( result->reason, error_codes[result->error]);
+    }
+    else
+    {
+        strcpy( result->reason, "unknown");
     }
 }
 

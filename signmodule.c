@@ -72,6 +72,7 @@ static PyObject * sign(PyObject *self, PyObject *args)
     // return a buffer of the data    
     PyObject* result = PyByteArray_FromStringAndSize(ret.data, ret.size);
     Py_INCREF(result);
+    freeResults(&ret);
     return result;
 }
 
@@ -94,6 +95,7 @@ static PyObject * verify(PyObject *self, PyObject *args)
     // return a buffer of the data
     PyObject* result = PyByteArray_FromStringAndSize(ret.data, ret.size);
     Py_INCREF(result);
+    freeResults(&ret);
     return result;
 }
 
@@ -116,6 +118,7 @@ static PyObject * extract(PyObject *self, PyObject *args)
     // return a buffer of the data
     PyObject* result = PyByteArray_FromStringAndSize(ret.data, ret.size);
     Py_INCREF(result);
+    freeResults(&ret);
     return result;
 }
 
